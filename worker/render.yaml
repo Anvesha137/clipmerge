@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: clipmerge-audio
+    runtime: python
+    rootDir: worker
+    buildCommand: bash render-build.sh
+    startCommand: sh start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: ALLOWED_ORIGINS
+        sync: false
