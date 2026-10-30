@@ -1,72 +1,114 @@
-# ClipMerge — full codebase, local testing, and Docker-free deployment
+<div align="center">
 
-ClipMerge is a Next.js/TypeScript browser audio editor with an optional Python FastAPI worker for importing audio from YouTube videos that you have permission to download. It supports multiple clips, per-clip timestamps, clip ordering, fade in/out, volume, crossfade or silence between clips, browser preview, and **MP3 (192 kbps) / WAV export**.
+<img width="1024" height="238" alt="clipmerge-banner" src="https://github.com/user-attachments/assets/254a633c-637a-4033-a0fb-e792f7791286" />
 
-**Important:** YouTube does not provide a general-purpose official audio download API. You must have rights and authorization to download the material, and comply with the applicable service terms. Some YouTube URLs cannot be extracted, particularly from hosting-provider IPs. The app works with locally uploaded audio even if YouTube extraction fails.
+# ClipMerge 🎧
 
-## What you need
+### Cut. Mix. Merge. Your way.
 
-- Node.js **20.9+** and npm (Node 22 LTS recommended)
-- Python **3.11+** for the optional import backend
-- Git and a GitHub account to deploy
-- A Vercel account for the frontend
-- **One** Railway or Render account for the Python backend
-- **No Docker or Nginx required**
-- FFmpeg for local backend processing, either on your PATH or provided by the Python `imageio-ffmpeg` dependency. The deployed Railway setup installs system FFmpeg; Render uses a bundled FFmpeg executable.
+**A lightweight, browser-first audio editor for arranging, trimming, and mixing clips — with MP3 and WAV exports.**
 
-No database, login, API key, or paid media API is required for this prototype. Hosting services may charge for compute or impose free-plan limits.
+![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-Editor-3178C6?logo=typescript&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-Optional%20Import-009688?logo=fastapi&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-Not%20Required-7254E8) ![Status](https://img.shields.io/badge/Status-Prototype-6B5CE7)
 
-## Folder structure
+[Features](#-features) · [Quick start](#-quick-start) · [How it works](#-how-it-works) · [Deployment](#-deployment) · [Troubleshooting](#-troubleshooting)
 
-```
-app/                    Next.js page, layout, styles
-lib/audio.ts            Web Audio rendering and WAV/MP3 encoding
-worker/main.py          FastAPI /extract and /health endpoints
-worker/requirements.txt Python dependencies
-worker/nixpacks.toml    Railway Nixpacks build
-worker/render-build.sh  Render Python build
-worker/render.yaml      Render Blueprint configuration
-worker/start.sh         Start API on platform PORT
-.env.example            Frontend environment variable example
-DEPLOY-NO-DOCKER.md     Additional deployment notes
-```
+</div>
 
-## A. Run the frontend locally (Windows/macOS/Linux)
+---
 
-From the project root:
+## ✨ What is ClipMerge?
+
+ClipMerge is a **Next.js + TypeScript audio editing app** that lets you combine multiple audio clips right in your browser. Upload your files, choose exact time ranges, adjust levels and fades, arrange the sequence, preview the result, and export a finished mix.
+
+Most editing happens **locally in your browser** through the Web Audio API. An **optional FastAPI worker** enables importing audio from YouTube videos you have permission to download; it is **not required** for ordinary file-based editing.
+
+## 🎛️ Features
+
+| Feature | What you can do |
+| --- | --- |
+| 📂 Multiple audio sources | Upload and manage multiple local audio files |
+| ✂️ Precise trimming | Set start and end timestamps for each clip |
+| ↕️ Clip arrangement | Reorder clips before rendering |
+| 🎚️ Volume & fades | Set clip volume and fade-in/fade-out |
+| 🔀 Smooth transitions | Choose crossfade or silence between clips |
+| ▶️ Preview | Listen to your assembled mix before exporting |
+| 📥 Export | Download **MP3 at 192 kbps** or **WAV** |
+| 🔗 Optional YouTube import | Import eligible, authorized audio using the Python worker |
+| 💾 Project settings | Download editing settings as JSON (audio files are not included) |
+
+> **No login or database is required for this prototype.** Local audio editing works even when the optional import service is offline.
+
+## 🧰 Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 15, React, TypeScript |
+| Audio editing & rendering | Web Audio API, browser-based WAV/MP3 encoding |
+| Optional import API | Python 3.11+, FastAPI |
+| Authorized video audio extraction | yt-dlp and FFmpeg |
+| Frontend deployment | Vercel |
+| Optional worker deployment | Railway or Render |
+
+## 🚀 Quick start
+
+### 1. Run the frontend
+
+**Requirements:** Node.js **20.9+** and npm (Node 22 LTS recommended).
 
 ```bash
 npm install
-cp .env.example .env.local  # Windows PowerShell: Copy-Item .env.example .env.local
+```
+
+Create the local environment file:
+
+```powershell
+# Windows PowerShell
+Copy-Item .env.example .env.local
+```
+
+```bash
+# macOS / Linux
+cp .env.example .env.local
+```
+
+In `.env.local`:
+
+```env
+NEXT_PUBLIC_AUDIO_API_URL=http://localhost:8080
+```
+
+Start the app:
+
+```bash
 npm run dev
 ```
 
-Open **http://localhost:3000**. You can already upload local audio, trim it, add effects, preview, and export MP3/WAV **without running the backend**.
+Open **http://localhost:3000**. You can now upload audio, trim clips, preview, and export without starting the Python worker.
 
-For a production build check:
+### 2. Run the optional import backend
 
-```bash
-npm run lint
-npm run build
-npm run start
-```
+**Requirements:** Python **3.11+** and FFmpeg (system installation or compatible bundled executable).
 
-## B. Run the YouTube import backend locally (no Docker)
-
-Open a second terminal:
+In a **second terminal**:
 
 ```bash
 cd worker
 python -m venv .venv
 ```
 
-Activate the environment:
+Activate your virtual environment:
 
-- Windows PowerShell: `.venv\Scripts\Activate.ps1`
-- Windows CMD: `.venv\Scripts\activate.bat`
-- macOS/Linux: `source .venv/bin/activate`
+```powershell
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+```
 
-Then:
+```bash
+# macOS / Linux
+source .venv/bin/activate
+```
+
+Install and run:
 
 ```bash
 python -m pip install --upgrade pip
@@ -74,145 +116,100 @@ python -m pip install -r requirements.txt
 python -m uvicorn main:app --host 127.0.0.1 --port 8080
 ```
 
-The default CORS origin is `http://localhost:3000`. If the backend is running on another port, update `.env.local` in the **project root** and restart Next.js:
+Check the service at **http://127.0.0.1:8080/health** (expected `{"ok":true}`) or open **http://127.0.0.1:8080/docs**.
 
-```env
-NEXT_PUBLIC_AUDIO_API_URL=http://localhost:8080
+**Windows tip:** If `python` is not found, install Python 3.11+ or use an installed version via `py -3.11`. You can run `.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8080` without activating the environment.
+
+## 🎬 How to use
+
+1. Open **http://localhost:3000** and upload two audio files you own.
+2. Set each clip's start/end timestamps and adjust the order.
+3. Set volume and fade-in/fade-out for each clip.
+4. Choose a crossfade or silence gap between clips.
+5. Select **Preview mix** and listen.
+6. Export as **MP3 (192 kbps)** or **WAV**.
+7. Optionally import audio from an authorized YouTube URL if the worker is running.
+
+## 🧩 How it works
+
+```mermaid
+flowchart LR
+    A[Local audio files] --> B[Next.js editor]
+    B --> C[Web Audio processing]
+    C --> D[Preview mix]
+    C --> E[MP3 / WAV export]
+    F[Authorized YouTube URL] --> G[FastAPI worker]
+    G --> H[yt-dlp + FFmpeg]
+    H --> B
 ```
 
-Check backend health:
+**Local uploads** are decoded, trimmed, mixed, and exported in the browser. **Optional YouTube imports** are processed by the worker, which streams an MP3 back to the browser and removes temporary processing files. The project-settings JSON contains editing configuration, **not the source audio**; JSON re-import is not currently implemented.
+
+## 📁 Project structure
+
+```text
+clipmerge/
+├── app/                     # Next.js routes, layout, styles
+├── lib/audio.ts             # Web Audio rendering, MP3/WAV encoding
+├── types/                   # TypeScript definitions
+├── worker/
+│   ├── main.py              # FastAPI /extract and /health
+│   ├── requirements.txt
+│   ├── nixpacks.toml        # Railway build configuration
+│   ├── render-build.sh      # Render build script
+│   ├── render.yaml          # Render Blueprint
+│   └── start.sh             # Platform PORT startup
+├── .env.example             # Environment variable template
+├── DEPLOY-NO-DOCKER.md      # Deployment details
+└── README.md
+```
+
+## ☁️ Deployment
+
+**Frontend — Vercel:** Import the GitHub repository, use Next.js with the repository root, and set `NEXT_PUBLIC_AUDIO_API_URL` to your deployed worker's **HTTPS URL**. Redeploy after changing public environment variables.
+
+**Optional backend — Railway:** Deploy the same repository with root directory `worker`, use the included Nixpacks configuration where supported, set start command `sh start.sh`, and configure `ALLOWED_ORIGINS` for your frontend URL.
+
+**Optional backend — Render:** Create a Python Web Service with root directory `worker`, build command `bash render-build.sh`, start command `sh start.sh`, and health check `/health`. Configure `ALLOWED_ORIGINS`.
+
+> You do **not** need Docker or Nginx. For full step-by-step deployment, see [DEPLOY-NO-DOCKER.md](DEPLOY-NO-DOCKER.md). Hosting availability, limits, and pricing may change.
+
+## 🛠️ Troubleshooting
+
+| Problem | What to check |
+| --- | --- |
+| `Cannot read properties of undefined (reading 'NEXT_PUBLIC_AUDIO_API_URL')` | In Next.js, access `process.env.NEXT_PUBLIC_AUDIO_API_URL`, **not** `import.meta.env...`; ensure `.env.local` is in the project root and restart `npm run dev` |
+| `YouTube backend not configured` | Set `NEXT_PUBLIC_AUDIO_API_URL` and restart/redeploy the frontend |
+| CORS error | Ensure the backend `ALLOWED_ORIGINS` includes the exact frontend origin |
+| Worker `/health` fails | Verify worker startup logs, dependencies, and port |
+| YouTube import fails | Check permissions, source restrictions, yt-dlp updates, and FFmpeg/ffprobe availability |
+| MP3 export is slow | Reduce clip duration; encoding uses your device's CPU |
+| Build fails | Check Node version and inspect TypeScript/build errors |
+
+## ⚠️ Important limitations
+
+- You must have **rights and authorization** to download any YouTube content. YouTube does not provide a general-purpose official audio download API, and some URLs may fail due to service restrictions or cloud-provider IP blocking.
+- Uploaded files are limited to **100 MB each**, and combined exports to **30 minutes** in the current UI.
+- The optional importer has a **120-second timeout** and is not hardened for unrestricted public use. Add authentication, rate limiting, quotas, monitoring, and abuse protection before public deployment.
+- `NEXT_PUBLIC_` values are visible in browser code. **Never store secrets** in them.
+- Crossfades are simple gain envelopes and are not loudness-normalized.
+- This is a **prototype**; a complete production deployment has not been independently verified here.
+
+## 🧪 Useful commands
 
 ```bash
-curl http://127.0.0.1:8080/health
+npm run dev       # Start frontend
+npm run lint      # Lint/type checks as configured
+npm run build     # Build frontend
+npm run start     # Run production frontend
 ```
 
-Expected: `{"ok":true}`. FastAPI documentation: `http://127.0.0.1:8080/docs`.
+---
 
-**Windows note:** If `python` is unavailable, try `py -3.11` for the virtual environment command. If PowerShell blocks activation, use CMD or run `.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8080` directly. You do not need Docker.
+<div align="center">
 
-## C. Test the editor end to end
+**ClipMerge** · Cut. Mix. Merge. Your way. 🎶
 
-1. Open `http://localhost:3000`.
-2. Upload **two** audio files that you own (MP3 or WAV are best for testing).
-3. Check that each file appears in **Audio sources** and creates a clip.
-4. Change the first clip to `00:02`–`00:08`, the second to `00:01`–`00:06` (use files long enough for those ranges).
-5. Set first clip fade in to 1 second, second clip fade out to 1 second.
-6. Reorder the clips with the arrow controls.
-7. Set crossfade to 1 second, leaving silence gap at 0.
-8. Click **Preview mix** and listen.
-9. Choose **MP3 · 192 kbps**, click **Export MP3**, and play the downloaded file.
-10. Choose **WAV**, click **Export WAV**, and play that file.
-11. Test validation: set a clip end timestamp beyond its source duration; the UI should show an error rather than export.
-12. Optional authorized YouTube test: paste an eligible URL in the YouTube section, tick the rights confirmation, click **Extract audio from YouTube**, and verify the imported file appears in the source list. YouTube extraction may fail due to source restrictions, terms, or platform blocking even when your app is configured correctly.
+*Made for creators who want a simple, browser-first audio editing workflow.*
 
-A simple backend request example (replace the URL with a video you are authorized to download):
-
-```bash
-curl -L -X POST http://127.0.0.1:8080/extract \
-  -H 'Content-Type: application/json' \
-  -d '{"url":"https://www.youtube.com/watch?v=YOUR_VIDEO_ID","authorized":true}' \
-  --output imported.mp3
-```
-
-On Windows PowerShell, use `curl.exe` rather than the `curl` alias. A non-200 response will not be a playable MP3; inspect the response status and JSON error first.
-
-## D. Push the project to GitHub
-
-Create an empty repository at https://github.com/new named `clipmerge`. In the project root:
-
-```bash
-git init
-git add .
-git commit -m "Initial ClipMerge app"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/clipmerge.git
-git push -u origin main
-```
-
-Never commit `.env.local`, private credentials, or downloaded media. `.gitignore` excludes local environment files.
-
-## E. Deploy the Python backend on Railway (no Docker)
-
-1. Open https://railway.com, create a project, and choose **Deploy from GitHub repo**.
-2. Select the ClipMerge repository.
-3. Set **Root Directory** to `/worker`.
-4. Choose **Nixpacks** if available. `worker/nixpacks.toml` installs Python 3.11, FFmpeg, and Node 22, then Python dependencies. If Railway only offers Railpack, its build settings differ; configure a build with system FFmpeg or use Render below.
-5. Set **Start Command** to `sh start.sh` if not auto-detected.
-6. In **Variables**, add `ALLOWED_ORIGINS=https://YOUR-VERCEL-APP.vercel.app,http://localhost:3000`. Replace the placeholder after Vercel deployment.
-7. Deploy and generate a public HTTPS domain in **Networking**.
-8. Visit `https://YOUR-RAILWAY-DOMAIN/health`. It should return `{"ok":true}`.
-
-Railway injects `PORT`; do not hardcode a public port. No Nginx setup is required.
-
-## F. Alternative: deploy the Python backend on Render (no Docker)
-
-1. Open https://dashboard.render.com and select **New → Web Service**.
-2. Connect the ClipMerge GitHub repository.
-3. Configure **Root Directory**: `worker`; **Runtime**: Python.
-4. Set **Build Command**: `bash render-build.sh`.
-5. Set **Start Command**: `sh start.sh`.
-6. Set **Health Check Path**: `/health`.
-7. Add `ALLOWED_ORIGINS=https://YOUR-VERCEL-APP.vercel.app,http://localhost:3000`.
-8. Deploy, then visit `https://YOUR-RENDER-DOMAIN/health`.
-
-Alternatively, use the included `worker/render.yaml` as a starting point for a Render Blueprint. **Caution:** Render's Python environment may not include system `ffprobe`. The bundled `imageio-ffmpeg` executable is passed to yt-dlp, but some post-processing cases may need both `ffmpeg` and `ffprobe`. If extraction fails, prefer Railway with system FFmpeg or install both binaries on Render. Render instances can also sleep or time out depending on plan.
-
-## G. Deploy the Next.js frontend on Vercel
-
-1. Open https://vercel.com/new.
-2. Import the same GitHub repository.
-3. Keep **Framework Preset: Next.js** and **Root Directory: `.`** (repository root).
-4. Add environment variable **`NEXT_PUBLIC_AUDIO_API_URL`** with the **HTTPS Railway or Render worker domain**, e.g. `https://clipmerge-audio.up.railway.app` (no trailing slash).
-5. Deploy or redeploy after changing the environment variable.
-6. Copy your production Vercel domain and update the worker's `ALLOWED_ORIGINS` variable to include it. Redeploy/restart the worker if needed.
-7. Test the live website and backend `/health` endpoint, then repeat the local editor tests.
-
-**CORS troubleshooting:** `ALLOWED_ORIGINS` must contain the exact scheme and hostname of the frontend, no path or trailing slash. Vercel preview deployments may use different origins; explicitly allow the previews you intend to use.
-
-## H. How the system works
-
-- Uploaded audio is decoded and processed entirely in the browser using the Web Audio API. The audio isn't uploaded to the Python backend.
-- A YouTube import sends a permitted URL to the FastAPI backend. The backend uses yt-dlp and FFmpeg to generate a temporary MP3, streams it to the browser, and deletes the temporary directory after delivery.
-- Trimming, fades, crossfade, mixing, MP3 and WAV encoding occur in the browser, not on Railway/Render.
-- A project-settings JSON download contains **only the editing configuration**, not the original audio. There is currently no project JSON re-import feature.
-
-## I. Limits and production-readiness
-
-- The UI limits each uploaded audio file to **100 MB** and combined exports to **30 minutes**; browser RAM and device speed can impose tighter limits.
-- YouTube imports have a 120-second backend timeout and size limits; longer videos may fail.
-- YouTube changes its site frequently. yt-dlp may need updates and additional JS-runtime dependencies; cloud-provider IPs may be blocked. No guaranteed support for all videos.
-- The importer currently has **no user authentication, rate limiting, job queue, or per-user quotas**. Do **not** launch it as an unrestricted public downloader. Add authentication, limits, logging, and abuse protection first.
-- The authorization checkbox is a user assertion, **not proof of permission**.
-- Temporary media lives on the backend's ephemeral filesystem. The service is not designed for durable file storage.
-- `NEXT_PUBLIC_` environment variables are publicly exposed to browsers. Never put secrets in them.
-- Crossfade is a basic gain-envelope implementation; it is not loudness-normalized. Export quality should be checked by listening.
-- If npm installation/build fails, check Node version, install dependencies, and inspect the first error message. The code was not verified with a full production deployment in this environment.
-
-## J. Common errors
-
-| Error | What to check |
-|---|---|
-| `YouTube backend not configured` | Set `NEXT_PUBLIC_AUDIO_API_URL` and restart/redeploy Next.js |
-| Browser CORS error | Correct `ALLOWED_ORIGINS` to exactly match frontend URL |
-| `/health` fails | Check worker deployment logs, startup command, and injected `PORT` |
-| YouTube 422 error | URL rights, restrictions, hosting IP blocking, yt-dlp updates, FFmpeg/ffprobe availability |
-| Extraction timeout | Source length, backend CPU/RAM, network and 120-second timeout |
-| MP3 export slow | Shorten clips; browser-based encoding uses device CPU |
-| `npm run build` fails | Confirm Node 20.9+, reinstall dependencies and review TypeScript errors |
-
-## K. Useful commands
-
-```bash
-# Frontend dev
-npm run dev
-# Frontend typecheck
-npm run lint
-# Frontend production build
-npm run build
-# Backend health
-curl http://127.0.0.1:8080/health
-# Backend syntax check
-python -m py_compile worker/main.py
-```
-
-For additional hosting notes, see `DEPLOY-NO-DOCKER.md`.
+</div>
